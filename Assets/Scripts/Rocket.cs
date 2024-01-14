@@ -12,12 +12,16 @@ public class Rocket : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        
+
     }
 
     // Update is called once per frame
     void Update()
     {
-        
+        if (isMoving)
+        {
+            transform.position += transform.forward * (speed * Time.deltaTime);
+            transform.Rotate(new Vector3(0, 30 * Time.deltaTime, 0));
+        }
     }
 }

@@ -142,6 +142,21 @@ namespace HeneGames.Airplane
         [Tooltip("How far must the plane be from the runway before it can be controlled again")]
         [SerializeField] private float takeoffLenght = 30f;
 
+        [SerializeField]
+        private GameObject pfRocket;
+
+        [SerializeField]
+        private Transform[] spawnPositionRocket = new Transform[2];
+
+        GameObject[] rocket = new GameObject[2];
+
+
+        bool spacebarPressed;
+        int currentRocket;
+        float[] timeRocketFired = new float[2];
+
+
+
         private void Start()
         {
             //Setup speeds
@@ -156,6 +171,9 @@ namespace HeneGames.Airplane
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
 
             SetupColliders(crashCollidersRoot);
+
+            CreateRocket(0);
+            CreateRocket(1);
         }
 
         private void Update()
@@ -179,6 +197,51 @@ namespace HeneGames.Airplane
             }
         }
 
+        private void CreateRocket(int rocketNumber)
+        {
+            Debug.Log("Creating rocket " + rocketNumber);
+            rocket[rocketNumber] = Instantiate(pfRocket, spawnPositionRocket[rocketNumber].position, Quaternion.LookRotation(transform.forward, Vector3.up));
+            rocket[rocketNumber].name = "Rocket-" + (rocketNumber == 0 ? "Left" : "Right");
+            rocket[rocketNumber].transform.parent = transform;
+        }
+
+        private void UpdateRockets()
+        {
+            if (Input.GetKey(KeyCode.Space) == false)
+            {
+                spacebarPressed = false;
+            }
+
+            if (Input.GetKey(KeyCode.Space) && !spacebarPressed)
+            {
+                spacebarPressed = true;
+                if (rocket[currentRocket].GetComponent<Rocket>().IsMoving == false)
+                {
+                    timeRocketFired[currentRocket] = Time.time;
+                    rocket[currentRocket].GetComponent<Rocket>().IsMoving = true;
+                    rocket[currentRocket].transform.SetParent(null);
+                }
+
+                currentRocket++;
+                if (currentRocket > 1)
+                {
+                    currentRocket = 0;
+                }
+            }
+
+            //Spawn Rocket
+            for (int rocket_number = 0; rocket_number < 2; rocket_number++)
+            {
+                if (rocket[rocket_number] == null || rocket[rocket_number].GetComponent<Rocket>().IsMoving == true)
+                {
+                    if (Time.time - timeRocketFired[rocket_number] > 1)
+                    {
+                        CreateRocket(rocket_number);
+                    }
+                }
+            }
+        }
+
         #region Flying State
 
         private void FlyingUpdate()
@@ -188,6 +251,7 @@ namespace HeneGames.Airplane
             //Airplane move only if not dead
             if (!planeIsDead)
             {
+                UpdateRockets();
                 Movement();
                 SidewaysForceCalculation();
             }
@@ -286,13 +350,13 @@ namespace HeneGames.Airplane
             if (inputTurbo && !turboOverheat)
             {
                 //Turbo overheating
-                if(turboHeat > 100f)
+                if (turboHeat > 100f)
                 {
                     turboHeat = 100f;
                     turboOverheat = true;
                 }
                 else
-                {       
+                {
                     //Add turbo heat
                     turboHeat += Time.deltaTime * turboHeatingSpeed;
                 }
@@ -316,7 +380,7 @@ namespace HeneGames.Airplane
             else
             {
                 //Turbo cooling down
-                if(turboHeat > 0f)
+                if (turboHeat > 0f)
                 {
                     turboHeat -= Time.deltaTime * turboCooldownSpeed;
                 }
@@ -328,10 +392,10 @@ namespace HeneGames.Airplane
                 //Turbo cooldown
                 if (turboOverheat)
                 {
-                   if(turboHeat <= turboOverheatOver)
-                   {
+                    if (turboHeat <= turboOverheatOver)
+                    {
                         turboOverheat = false;
-                   }
+                    }
                 }
 
                 //Speed and rotation normal
@@ -372,7 +436,7 @@ namespace HeneGames.Airplane
             currentSpeed = Mathf.Lerp(currentSpeed, 0f, Time.deltaTime);
 
             //Set local rotation to zero
-            transform.localRotation = Quaternion.Lerp(transform.localRotation, Quaternion.Euler(0f,0f,0f), 2f * Time.deltaTime);
+            transform.localRotation = Quaternion.Lerp(transform.localRotation, Quaternion.Euler(0f, 0f, 0f), 2f * Time.deltaTime);
         }
 
         #endregion
@@ -400,7 +464,7 @@ namespace HeneGames.Airplane
 
             //Far enough from the runaway go back to flying state
             float _distanceToRunway = Vector3.Distance(transform.position, currentRunway.transform.position);
-            if(_distanceToRunway > takeoffLenght)
+            if (_distanceToRunway > takeoffLenght)
             {
                 currentRunway = null;
                 airplaneState = AirplaneState.Flying;
@@ -446,7 +510,7 @@ namespace HeneGames.Airplane
 
         private void UpdatePropellersAndLights()
         {
-            if(!planeIsDead)
+            if (!planeIsDead)
             {
                 //Rotate propellers if any
                 if (propellers.Length > 0)
@@ -519,7 +583,7 @@ namespace HeneGames.Airplane
         {
             for (int i = 0; i < _lights.Length; i++)
             {
-                if(!planeIsDead)
+                if (!planeIsDead)
                 {
                     _lights[i].intensity = Mathf.Lerp(_lights[i].intensity, _intensity, 10f * Time.deltaTime);
                 }
@@ -527,7 +591,7 @@ namespace HeneGames.Airplane
                 {
                     _lights[i].intensity = Mathf.Lerp(_lights[i].intensity, 0f, 10f * Time.deltaTime);
                 }
-               
+
             }
         }
 
@@ -546,7 +610,7 @@ namespace HeneGames.Airplane
                 if (airPlaneColliders[i].collideSometing)
                 {
                     //Reset colliders
-                    foreach(SimpleAirPlaneCollider _airPlaneCollider in airPlaneColliders)
+                    foreach (SimpleAirPlaneCollider _airPlaneCollider in airPlaneColliders)
                     {
                         _airPlaneCollider.collideSometing = false;
                     }
@@ -599,7 +663,7 @@ namespace HeneGames.Airplane
 
         public bool UsingTurbo()
         {
-            if(maxSpeed == turboSpeed)
+            if (maxSpeed == turboSpeed)
             {
                 return true;
             }
@@ -632,12 +696,12 @@ namespace HeneGames.Airplane
         /// <param name="_speedMultiplier"></param>
         public void ChangeSpeedMultiplier(float _speedMultiplier)
         {
-            if(_speedMultiplier < 0f)
+            if (_speedMultiplier < 0f)
             {
                 _speedMultiplier = 0f;
             }
 
-            if(_speedMultiplier > 1f)
+            if (_speedMultiplier > 1f)
             {
                 _speedMultiplier = 1f;
             }
